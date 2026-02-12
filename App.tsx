@@ -1,78 +1,105 @@
 import React, { useState } from 'react';
-import { UserRole, User, ProfileType } from './types';
+import { UserRole, User } from './types';
 import LoginScreen from './components/auth/LoginScreen';
 import SuperAdminPanel from './views/SuperAdminPanel';
 import VerifierPanel from './views/VerifierPanel';
+import ModeratorPanel from './views/ModeratorPanel';
 import UserApp from './views/UserApp';
-import { USERS } from './data';
+import BusinessLanding from './views/BusinessLanding';
+import LandingPage from './views/LandingPage';
+import { api } from './services/api';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.GUEST);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Navigation State for Guest Users
+  const [guestView, setGuestView] = useState<'landing' | 'login' | 'business'>('landing');
 
-  const handleLogin = (pin: string) => {
-    // 1. Roles de Sistema
-    if (pin === '000000') {
-      setRole(UserRole.ADMIN);
-      return;
-    } 
-    
-    if (pin === '111111') {
-      setRole(UserRole.VERIFIER);
-      setCurrentUser({
-        id: 'ver1',
-        nickname: 'Agente 01',
-        profileType: ProfileType.SINGLE,
-        publicPhoto: '',
-        gallery: [],
-        description: '',
-        location: '',
-        trustScore: 100,
-        verificationLevel: 'Alta Confianza',
-        isPremium: true,
-        status: 'Active',
-        joinedDate: '2023-01-01'
-      } as User);
-      return;
-    }
+  // Local state for users to support new registrations in this session
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
-    // 2. Buscar Usuario (Simulación de DB)
-    let foundUser: User | undefined;
+  // Load initial users
+  React.useEffect(() => {
+      api.users.getAll().then(setAllUsers);
+  }, []);
 
-    // Mapeo de PINS para Demo
-    if (pin === '222222') foundUser = USERS.find(u => u.id === 'u1'); // Elena (Activa)
-    else if (pin === '333333') foundUser = USERS.find(u => u.id === 'u3'); // NuevoUser (Pendiente)
-    else if (pin === '444444') foundUser = USERS.find(u => u.id === 'u4'); // Velvet (Negocio)
+  const handleRegister = async (newUser: User) => {
+      setIsLoading(true);
+      await api.auth.register(newUser);
+      const updatedUsers = await api.users.getAll();
+      setAllUsers(updatedUsers);
+      setIsLoading(false);
+      // Automatically login after register for MVP smoothness
+      setCurrentUser(newUser);
+      setRole(UserRole.USER);
+  };
 
-    // 3. Validación de Estados
-    if (foundUser) {
-        if (foundUser.status === 'Suspended') {
-            alert('⛔ CUENTA SUSPENDIDA\nContacta con administración para más detalles.');
-            return;
+  const handleLogin = async (pin: string) => {
+    setIsLoading(true);
+    try {
+        const response = await api.auth.login(pin);
+        
+        if (response.success) {
+            if (response.user) setCurrentUser(response.user);
+            setRole(response.role);
+        } else {
+            alert(response.error || 'Error de autenticación');
         }
-
-        if (foundUser.status === 'Pending') {
-            alert('⏳ VERIFICACIÓN PENDIENTE\nTu perfil está siendo revisado por nuestro equipo de seguridad. Te notificaremos cuando seas aprobado.');
-            return;
-        }
-
-        // Login Exitoso
-        setCurrentUser(foundUser);
-        setRole(UserRole.USER);
-        return;
+    } catch (error) {
+        alert('Error de conexión con el servidor.');
+    } finally {
+        setIsLoading(false);
     }
-
-    alert('PIN inválido o usuario no encontrado.');
   };
 
   const handleLogout = () => {
     setRole(UserRole.GUEST);
     setCurrentUser(null);
+    setGuestView('login'); // Redirect to Login Screen specifically
   };
 
-  if (role === UserRole.GUEST) {
-    return <LoginScreen onLogin={handleLogin} />;
+  if (isLoading && role === UserRole.GUEST) {
+      return (
+          <div className="min-h-screen bg-black flex flex-col items-center justify-center text-amber-500">
+              <div className="w-12 h-12 border-4 border-amber-900 border-t-amber-500 rounded-full animate-spin mb-4"></div>
+              <p className="text-xs tracking-widest uppercase">Conectando segura...</p>
+          </div>
+      );
   }
+
+  // --- GUEST ROUTING ---
+  if (role === UserRole.GUEST) {
+    if (guestView === 'landing') {
+        return (
+            <LandingPage 
+                onUserEnter={() => setGuestView('login')} 
+                onBusinessEnter={() => setGuestView('business')} 
+            />
+        );
+    }
+    
+    if (guestView === 'business') {
+        return (
+            <BusinessLanding 
+                onBack={() => setGuestView('landing')} 
+                onRegister={() => setGuestView('login')} 
+            />
+        );
+    }
+
+    // Default to Login Screen
+    return (
+        <LoginScreen 
+            onLogin={handleLogin} 
+            onRegister={handleRegister} 
+            onBack={() => setGuestView('landing')} // New prop to go back
+        />
+    );
+  }
+
+  // --- AUTHENTICATED VIEWS ---
 
   if (role === UserRole.ADMIN) {
     return <SuperAdminPanel onLogout={handleLogout} />;
@@ -82,11 +109,15 @@ const App: React.FC = () => {
     return <VerifierPanel user={currentUser} onLogout={handleLogout} />;
   }
 
-  if (role === UserRole.USER && currentUser) {
-    return <UserApp user={currentUser} onLogout={handleLogout} />;
+  if (role === UserRole.MODERATOR) {
+      return <ModeratorPanel onLogout={handleLogout} />;
   }
 
-  return <div>Error de estado</div>;
+  if (role === UserRole.USER && currentUser) {
+    return <UserApp user={currentUser} allUsers={allUsers} onLogout={handleLogout} />;
+  }
+
+  return <div>Error de estado crítico</div>;
 };
 
 export default App;

@@ -1,4 +1,4 @@
-import { User, ProfileType, VerificationRequest, Event, InvitationCode, ChatMessage, Post, Ticket } from './types';
+import { User, ProfileType, VerificationRequest, Event, InvitationCode, ChatMessage, Post, Ticket, Report, ReportCategory, SubscriptionTier } from './types';
 
 export const USERS: User[] = [
   {
@@ -12,10 +12,14 @@ export const USERS: User[] = [
     interests: ['Fiestas Temáticas', 'Viajes', 'Cenas Íntimas'],
     trustScore: 85,
     verificationLevel: 'Verificado',
-    isPremium: true,
+    verificationTier: 'L2: Identidad (ID+Selfie)',
+    isPremium: false,
+    subscriptionTier: SubscriptionTier.FREE, 
+    badges: ['Social Butterfly', 'Verificado L2'],
     status: 'Active',
     joinedDate: '2024-01-10',
     email: 'elena.g@gmail.com',
+    strikes: 0,
     privateIdentity: [
         {
             fullName: 'Elena Gomez',
@@ -43,10 +47,14 @@ export const USERS: User[] = [
     interests: ['Intercambio', 'Clubs', 'Wellness'],
     trustScore: 92,
     verificationLevel: 'Alta Confianza',
+    verificationTier: 'L3: Humano (Revisión)',
     isPremium: true,
+    subscriptionTier: SubscriptionTier.SUPPORTER, // Paid Annual Support
+    badges: ['Anfitrión 5 Estrellas', 'Early Adopter', 'VIP Elite'],
     status: 'Active',
     joinedDate: '2023-11-15',
     email: 'm_s_couple@hotmail.com',
+    strikes: 0,
     privateIdentity: [
         {
             fullName: 'Marco Ruiz',
@@ -80,10 +88,14 @@ export const USERS: User[] = [
     interests: ['Socializar', 'Eventos'],
     trustScore: 20,
     verificationLevel: 'Básico',
+    verificationTier: 'L1: Básico (Email/Tel)',
     isPremium: false,
+    subscriptionTier: SubscriptionTier.FREE,
+    badges: ['Nuevo'],
     status: 'Pending',
     joinedDate: '2024-01-14',
     email: 'javit88@gmail.com',
+    strikes: 0,
     privateIdentity: [
         {
             fullName: 'Javier T.',
@@ -105,10 +117,14 @@ export const USERS: User[] = [
     interests: ['Organización Eventos', 'Noche', 'Lujo'],
     trustScore: 98,
     verificationLevel: 'Alta Confianza',
+    verificationTier: 'L3: Humano (Revisión)',
     isPremium: true,
+    subscriptionTier: SubscriptionTier.BIZ_ELITE, // Updated to new tier
+    badges: ['Local Verificado', 'Top Seller'],
     status: 'Active',
     joinedDate: '2023-05-20',
-    invitationQuota: 8,
+    invitationQuota: 999,
+    strikes: 0,
     privateIdentity: [
         {
             fullName: 'Velvet Room SAS',
@@ -166,6 +182,33 @@ export const VERIFICATIONS: VerificationRequest[] = [
     status: 'Approved'
   }
 ];
+
+// --- MOCK REPORTS FOR MODERATION ---
+export const REPORTS: Report[] = [
+    {
+        id: 'r-001',
+        reporterId: 'u2',
+        reportedUserId: 'u3',
+        category: ReportCategory.SCAM,
+        description: 'Este usuario me envió un mensaje pidiendo pagos por adelantado via Telegram.',
+        evidenceImages: ['https://picsum.photos/id/800/300/600'], // Mock chat screenshot
+        timestamp: '2024-01-20 14:30',
+        status: 'Pending',
+        severity: 'High'
+    },
+    {
+        id: 'r-002',
+        reporterId: 'u4',
+        reportedUserId: 'u1',
+        category: ReportCategory.HARASSMENT,
+        description: 'Comentarios ofensivos en nuestra última publicación.',
+        timestamp: '2024-01-19 09:15',
+        status: 'Resolved',
+        severity: 'Low',
+        adminNotes: 'Usuario advertido. Primer strike.'
+    }
+];
+// ------------------------------------
 
 export const EVENTS: Event[] = [
   {
@@ -281,6 +324,22 @@ export const CHATS: Record<string, ChatMessage[]> = {
         type: 'real_photo',
         value: 'https://picsum.photos/id/1011/400/400' // Real photo revealed
       }
+    },
+    {
+        id: 'm5',
+        senderId: 'me',
+        text: 'Nota de voz (15s)',
+        timestamp: '10:38 AM',
+        type: 'audio',
+        isEphemeral: true
+    },
+    {
+        id: 'm6',
+        senderId: 'u2',
+        text: 'Te compartimos la ubicación del after',
+        timestamp: '10:40 AM',
+        type: 'location',
+        locationData: { lat: 4.6097, lng: -74.0817, label: 'Zona Rosa' }
     }
   ]
 };
